@@ -1,17 +1,18 @@
-#!/usr/bin/env python3
-
-import io
-import sys
-
-import pyperclip
-import pytesseract
-from PIL import Image
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
 from pynotifier import Notification
 
 
+def notify(msg: str, level: str = "INFO"):
+    print(f"{level}: {msg}")
+    Notification(title="TextShot", description=msg).send()
+
+
 class Snipper(QtWidgets.QWidget):
+    shot_signal = QtCore.Signal(QPixmap)
+    quit_signal = QtCore.Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
@@ -21,6 +22,7 @@ class Snipper(QtWidgets.QWidget):
 
         self.screen = QtWidgets.QApplication.screenAt(QtGui.QCursor.pos()).grabWindow(0)
         self.scale_factor = self.screen.devicePixelRatio()
+
         palette = QtGui.QPalette()
         palette.setBrush(self.backgroundRole(), QtGui.QBrush(self.screen))
         self.setPalette(palette)
@@ -31,7 +33,7 @@ class Snipper(QtWidgets.QWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
-            QtWidgets.QApplication.quit()
+            self.quit_signal.emit()
 
         return super().keyPressEvent(event)
 
@@ -72,67 +74,4 @@ class Snipper(QtWidgets.QWidget):
             abs(self.start.x() - self.end.x()),
             abs(self.start.y() - self.end.y()),
         )
-        processImage(shot)
-        QtWidgets.QApplication.quit()
-
-
-def processImage(img):
-    buffer = QtCore.QBuffer()
-    buffer.open(QtCore.QBuffer.ReadWrite)
-    img.save(buffer, "PNG")
-    pil_img = Image.open(io.BytesIO(buffer.data()))
-    buffer.close()
-
-    try:
-        result = pytesseract.image_to_string(
-            pil_img, timeout=5, lang=LANG
-        ).strip()
-    except RuntimeError as error:
-        print(f"ERROR: An error occurred when trying to process the image: {error}")
-        notify(f"An error occurred when trying to process the image: {error}")
-        return
-
-    if result:
-        pyperclip.copy(result)
-        print(f'INFO: Copied "{result}" to the clipboard')
-        notify(f'Copied "{result}" to the clipboard')
-    else:
-        print(f"INFO: Unable to read text from image, did not copy")
-        notify(f"Unable to read text from image, did not copy")
-
-
-def notify(msg):
-    try:
-        Notification(title="TextShot", description=msg).send()
-    except (SystemError, NameError):
-        trayicon = QtWidgets.QSystemTrayIcon(
-            QtGui.QIcon(
-                QtGui.QPixmap.fromImage(QtGui.QImage(1, 1, QtGui.QImage.Format_Mono))
-            )
-        )
-        trayicon.show()
-        trayicon.showMessage("TextShot", msg, QtWidgets.QSystemTrayIcon.NoIcon)
-        trayicon.hide()
-
-
-if __name__ == "__main__":
-    QtCore.QCoreApplication.setAttribute(Qt.AA_DisableHighDpiScaling)
-    app = QtWidgets.QApplication(sys.argv)
-    LANG = sys.argv[1] if len(sys.argv) > 1 else None
-    try:
-        pytesseract.get_tesseract_version()
-    except EnvironmentError:
-        notify(
-            "Tesseract is either not installed or cannot be reached.\n"
-            "Have you installed it and added the install directory to your system path?"
-        )
-        print(
-            "ERROR: Tesseract is either not installed or cannot be reached.\n"
-            "Have you installed it and added the install directory to your system path?"
-        )
-        sys.exit()
-
-    window = QtWidgets.QMainWindow()
-    snipper = Snipper(window)
-    snipper.show()
-    sys.exit(app.exec())
+        self.shot_signal.emit(shot)
