@@ -74,7 +74,6 @@ class OcrWrapperCnOcr(OcrWrapper):
         ocr = cnocr.CnOcr(model_backend='pytorch')
         image = np.asarray(image.convert('RGB'))
         result = ocr.ocr(image)
-        print(result)
         result = "\n".join(map(lambda x: "".join(x[0]), result))
         return result
 
