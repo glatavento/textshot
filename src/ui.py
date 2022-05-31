@@ -1,12 +1,6 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from pynotifier import Notification
-
-
-def notify(msg: str, level: str = "INFO"):
-    print(f"{level}: {msg}")
-    Notification(title="TextShot", description=msg).send()
 
 
 class Snipper(QtWidgets.QWidget):
@@ -75,3 +69,12 @@ class Snipper(QtWidgets.QWidget):
             abs(self.start.y() - self.end.y()),
         )
         self.shot_signal.emit(shot)
+
+
+def notify(msg: str, level: str = "INFO") -> None:
+    print(f"{level}: {msg}")
+    tray_icon = QtWidgets.QSystemTrayIcon(
+        QtGui.QIcon(QtGui.QPixmap.fromImage(QtGui.QImage(1, 1, QtGui.QImage.Format_Mono))))
+    tray_icon.show()
+    tray_icon.showMessage("TextShot", msg, QtWidgets.QSystemTrayIcon.NoIcon)
+    tray_icon.hide()
