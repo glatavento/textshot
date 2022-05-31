@@ -1,1 +1,1 @@
-python -m zipapp src -o text_shot -p "/usr/bin/env python"
+python -m zipapp src -o out/text_shot -p "/usr/bin/env python"
