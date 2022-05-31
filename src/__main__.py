@@ -41,7 +41,6 @@ class App(QtWidgets.QApplication):
         shot.save(buffer, "PNG")
         buffer.close()
         image = Image.open(io.BytesIO(buffer.data()))
-        image.save("shot.png")
 
         try:
             result = self.ocr_handler.process_image(image, self.lang)
