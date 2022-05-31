@@ -6,26 +6,21 @@ import sys
 import pyperclip
 import pytesseract
 from PIL import Image
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
-
-try:
-    from pynotifier import Notification
-except ImportError:
-    pass
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtCore import Qt
+from pynotifier import Notification
 
 
 class Snipper(QtWidgets.QWidget):
-    def __init__(self, parent=None, flags=Qt.WindowFlags()):
-        super().__init__(parent=parent, flags=flags)
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
 
         self.setWindowTitle("TextShot")
-        self.setWindowFlags(
-            Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Dialog
-        )
-        self.setWindowState(self.windowState() | Qt.WindowFullScreen)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Dialog)
+        self.setWindowState(Qt.WindowFullScreen)
 
         self.screen = QtWidgets.QApplication.screenAt(QtGui.QCursor.pos()).grabWindow(0)
+        self.scale_factor = self.screen.devicePixelRatio()
         palette = QtGui.QPalette()
         palette.setBrush(self.backgroundRole(), QtGui.QBrush(self.screen))
         self.setPalette(palette)
@@ -55,21 +50,22 @@ class Snipper(QtWidgets.QWidget):
         return super().paintEvent(event)
 
     def mousePressEvent(self, event):
-        self.start = self.end = event.pos()
+        self.start = self.end = event.position().toPoint()
         self.update()
         return super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        self.end = event.pos()
+        self.end = event.position().toPoint()
         self.update()
         return super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self.start == self.end:
             return super().mouseReleaseEvent(event)
-
         self.hide()
         QtWidgets.QApplication.processEvents()
+        self.start *= self.scale_factor
+        self.end *= self.scale_factor
         shot = self.screen.copy(
             min(self.start.x(), self.end.x()),
             min(self.start.y(), self.end.y()),
@@ -89,7 +85,7 @@ def processImage(img):
 
     try:
         result = pytesseract.image_to_string(
-            pil_img, timeout=5, lang=(sys.argv[1] if len(sys.argv) > 1 else None)
+            pil_img, timeout=5, lang=LANG
         ).strip()
     except RuntimeError as error:
         print(f"ERROR: An error occurred when trying to process the image: {error}")
@@ -122,6 +118,7 @@ def notify(msg):
 if __name__ == "__main__":
     QtCore.QCoreApplication.setAttribute(Qt.AA_DisableHighDpiScaling)
     app = QtWidgets.QApplication(sys.argv)
+    LANG = sys.argv[1] if len(sys.argv) > 1 else None
     try:
         pytesseract.get_tesseract_version()
     except EnvironmentError:
@@ -138,4 +135,4 @@ if __name__ == "__main__":
     window = QtWidgets.QMainWindow()
     snipper = Snipper(window)
     snipper.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
